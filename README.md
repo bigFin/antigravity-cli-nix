@@ -113,6 +113,16 @@ This wrapper intentionally does not expose your normal home directory, shell
 environment, SSH agent, or global cloud credentials. It is more isolated, but
 some commands or auth flows may require additional explicit mounts or setup.
 
+To expose your SSH agent inside the sandbox, opt in explicitly:
+
+```sh
+AGY_ALLOW_SSH=1 nix run .#agy-sandboxed
+```
+
+The workspace is writable by default so the CLI can edit code. For read-only
+analysis, use a copied workspace or mount policy changes in
+`packages/agy-sandboxed.nix`.
+
 ## Pinned Binary
 
 The pinned package fetches the tarball referenced by Google's platform manifest.
