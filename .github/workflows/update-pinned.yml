@@ -6,8 +6,11 @@ on:
     - cron: "17 9 * * 1,3,5"
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
+
+concurrency:
+  group: update-antigravity-cli
+  cancel-in-progress: false
 
 jobs:
   update:
@@ -25,14 +28,17 @@ jobs:
       - name: Build packages
         run: |
           nix flake check --all-systems
-          nix build .#agy-bin
-          nix build .#agy-fhs-live
-          nix build .#agy-sandboxed
+          nix build --no-link .#agy-bin
+          nix build --no-link .#agy-fhs-live
+          nix build --no-link .#agy-sandboxed
 
       - name: Create pull request
-        uses: peter-evans/create-pull-request@v7
+        id: cpr
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7
         with:
+          token: ${{ secrets.UPDATE_PR_TOKEN }}
           branch: update/antigravity-cli
+          add-paths: packages/pin.json
           title: Update pinned Antigravity CLI
           commit-message: Update pinned Antigravity CLI
           body: |
@@ -41,3 +47,23 @@ jobs:
             This updates only `packages/pin.json` for the pinned `agy-bin` package.
             The live FHS wrapper
             remains a runtime bootstrapper.
+
+      - name: Approve pull request
+        if: steps.cpr.outputs.pull-request-number != ''
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          github-token: ${{ secrets.AUTO_APPROVE_TOKEN }}
+          script: |
+            await github.rest.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: Number('${{ steps.cpr.outputs.pull-request-number }}'),
+              event: 'APPROVE',
+              body: 'Auto-approved trusted scheduled update PR.'
+            });
+
+      - name: Enable auto-merge
+        if: steps.cpr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ secrets.UPDATE_PR_TOKEN }}
+        run: gh pr merge "${{ steps.cpr.outputs.pull-request-number }}" --auto --squash --delete-branch

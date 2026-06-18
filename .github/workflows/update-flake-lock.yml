@@ -6,8 +6,11 @@ on:
     - cron: "43 10 * * 1"
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
+
+concurrency:
+  group: update-flake-lock
+  cancel-in-progress: false
 
 jobs:
   update:
@@ -27,15 +30,38 @@ jobs:
 
       - name: Build packages
         run: |
-          nix build .#agy-bin
-          nix build .#agy-fhs-live
-          nix build .#agy-sandboxed
+          nix build --no-link .#agy-bin
+          nix build --no-link .#agy-fhs-live
+          nix build --no-link .#agy-sandboxed
 
       - name: Create pull request
-        uses: peter-evans/create-pull-request@v7
+        id: cpr
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7
         with:
+          token: ${{ secrets.UPDATE_PR_TOKEN }}
           branch: update/flake-lock
+          add-paths: flake.lock
           title: Update flake lock
           commit-message: Update flake lock
           body: |
             Automated update of `flake.lock`.
+
+      - name: Approve pull request
+        if: steps.cpr.outputs.pull-request-number != ''
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          github-token: ${{ secrets.AUTO_APPROVE_TOKEN }}
+          script: |
+            await github.rest.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: Number('${{ steps.cpr.outputs.pull-request-number }}'),
+              event: 'APPROVE',
+              body: 'Auto-approved trusted scheduled update PR.'
+            });
+
+      - name: Enable auto-merge
+        if: steps.cpr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ secrets.UPDATE_PR_TOKEN }}
+        run: gh pr merge "${{ steps.cpr.outputs.pull-request-number }}" --auto --squash --delete-branch
