@@ -21,7 +21,7 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@v9
 
       - name: Check Nix flake health
-        uses: DeterminateSystems/flake-checker-action@v9
+        uses: DeterminateSystems/flake-checker-action@v12
 
       - name: Check formatting
         run: nix develop --command nixpkgs-fmt --check flake.nix packages/*.nix
