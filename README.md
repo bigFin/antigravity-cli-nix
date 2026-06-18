@@ -142,35 +142,8 @@ fetches manifests for all supported pinned platforms:
 
 then updates `packages/pin.json` with the latest URLs and Nix hashes.
 
-## CI
-
-The included workflows check formatting, evaluate and build the flake, refresh
-the pinned Antigravity CLI package, and refresh flake inputs.
-
-Scheduled update PRs on the `update/antigravity-cli` and `update/flake-lock`
-branches can run without manual workflow approval, receive an automatic PR
-review approval, and queue auto-merge after required checks pass. This requires
-two repository secrets:
-
-- `UPDATE_PR_TOKEN`: a fine-grained PAT or GitHub App token that can write
-  contents and pull requests. The update workflows use this to create the PR and
-  enable auto-merge.
-- `AUTO_APPROVE_TOKEN`: a separate fine-grained PAT or bot token that can write
-  pull request reviews. A separate token is used because GitHub generally does
-  not allow the same actor that opened a PR to approve it.
-
-Repository auto-merge must also be enabled, and branch protection for `main`
-should require the CI status checks and at least one approving review.
-
-The update workflows intentionally restrict their generated PRs to the expected
-files only: `packages/pin.json` for Antigravity CLI updates and `flake.lock` for
-flake input updates. Token-consuming actions are pinned to full commit SHAs;
-Dependabot checks GitHub Actions weekly and opens PRs when those pins should be
-updated. Review those PRs manually because action code runs in workflows that
-can receive credentials.
-
-The live package should not be auto-mutated by CI. It is intentionally a runtime
-bootstrapper.
+The pinned package is refreshed through this manifest update flow. The live
+wrapper remains intentionally mutable at runtime.
 
 ## License
 
